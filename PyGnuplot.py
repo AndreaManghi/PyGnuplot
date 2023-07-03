@@ -46,7 +46,7 @@ class gp(object):
         PyGnuplot object figure
     Inputs:
         gnuplot_address (Optional) : Desired gnuplot instance executable path, if not specified defaults to "gnuplot"
-        terminal (Optional) : Desired terminal, if not specified uses gnuplot default terminal
+        terminal (Optional) : Desired terminal, if not specified uses gnuplot's default terminal
     Usage example:
         f1 = gp(r"C:\Program Files\gnuplot\bin\gnuplot.exe")
         pi = f1.a('print pi')
