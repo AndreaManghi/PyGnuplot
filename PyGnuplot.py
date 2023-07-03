@@ -86,7 +86,10 @@ class gp(object):
         lines = []
         while True:
             try:
-                line = self.q_err.get(timeout=timeout)  # or .get_nowait()
+                if sys.platform == 'win32':
+                    line = self.q_out.get(timeout=timeout)  # or .get_nowait()
+                else:
+                    line = self.q_err.get(timeout=timeout)  # or .get_nowait()
                 lines.append(vtype(line.strip()))
             except Empty:
                 break
