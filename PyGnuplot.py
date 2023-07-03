@@ -210,7 +210,8 @@ class gp(object):
             f.close()  # write the rest and close
 
     def empty_plot(self):
-        self.c('plot [][-1:1] 1/0 t""')
+        self.c('clear')
+        self.r()  # clear the output buffer
 
     def ps(self, filename='tmp.ps', width=14, height=9, fontsize=12):
         '''Script to make gnuplot print into a postscript file
