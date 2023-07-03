@@ -68,6 +68,18 @@ class gp(object):
         self.default_term = terminal or str(*self.a('print GPVAL_TERM'))
         self.c(f"set terminal {self.default_term}")
 
+    def set_terminal(self, terminal: str):
+        """
+        Description:
+            used to change active terminal
+        Inputs:
+            terminal : Name of the desired terminal
+        Usage:
+            set_terminal("svg")  # sets active terminal to "svg"
+        """
+        self.default_term = terminal
+        self.c(f"set terminal {self.default_term}")
+
     def enqueue_std(self, out, queue):
         ''' used to setup the queues for the return buffers'''
         for line in iter(out.readline, ''):
