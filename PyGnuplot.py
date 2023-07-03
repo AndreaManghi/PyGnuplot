@@ -73,8 +73,8 @@ class gp(object):
         self.t_out.daemon = True  # thread dies with the program
         self.t_out.start()
         self.r()  # clear return buffer
-        self.default_term = terminal or str(*self.a('print GPVAL_TERM'))
-        self.c(f"set terminal {self.default_term}")
+        self.active_term = terminal or str(*self.a('print GPVAL_TERM'))
+        self.c(f"set terminal {self.active_term}")
 
     def set_terminal(self, terminal: str):
         """
@@ -85,8 +85,8 @@ class gp(object):
         Usage:
             set_terminal("svg")  # sets active terminal to "svg"
         """
-        self.default_term = terminal
-        self.c(f"set terminal {self.default_term}")
+        self.active_term = terminal
+        self.c(f"set terminal {self.active_term}")
 
     def enqueue_std(self, out, queue):
         """
@@ -260,7 +260,7 @@ class gp(object):
                + str(height) + 'cm color solid '
                + str(fontsize) + " font 'Calibri';")
         self.c('set out "' + filename + '";replot;')
-        self.c('set term ' + self.default_term + ';replot')
+        self.c('set term ' + self.active_term + ';replot')
         return self.r()
 
     def pdf(self, filename='tmp.pdf', width=8.8, height=6, fontscale=0.5):
@@ -275,7 +275,7 @@ class gp(object):
                + str(width) + 'cm, '
                + str(height) + "cm;")
         self.c('set out "' + filename + '";replot;')
-        self.c('set term ' + self.default_term + '; replot')
+        self.c('set term ' + self.active_term + '; replot')
         return self.r()  # clear buffer
 
     def quit(self):
