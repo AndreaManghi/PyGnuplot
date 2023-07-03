@@ -47,10 +47,10 @@ class gp(object):
         pi = f1.a('print pi')
     """
 
-    def __init__(self, gnuplot_address='gnuplot'):
-        # also also initialize with gnuplot_address = r"C:\Program Files\gnuplot\bin\gnuplot.exe"
-        self.gnuplot_address=gnuplot_address
-        ''' open pipe with gnuplot '''
+    def __init__(self, gnuplot_address='gnuplot', terminal=None):
+        # Also initialize with gnuplot_address = r"C:\Program Files\gnuplot\bin\gnuplot.exe"
+        self.gnuplot_address = gnuplot_address
+        # open pipe with gnuplot
         self.p = Popen([gnuplot_address], stdin=PIPE, stderr=PIPE, stdout=PIPE,
                        bufsize=1, close_fds=ON_POSIX,
                        shell=False, universal_newlines=True)
@@ -65,7 +65,8 @@ class gp(object):
         self.t_out.daemon = True  # thread dies with the program
         self.t_out.start()
         self.r()  # clear return buffer
-        self.default_term = str(*self.a('print GPVAL_TERM'))
+        self.default_term = terminal or str(*self.a('print GPVAL_TERM'))
+        self.c(f"set terminal {self.default_term}")
 
     def enqueue_std(self, out, queue):
         ''' used to setup the queues for the return buffers'''
