@@ -127,14 +127,19 @@ class gp(object):
     def a(self, command='', vtype=str, timeout=0.05):
         """
         Description:
-            ask gnuplot (write and get answer)
+            ask gnuplot (write and get answer), this function is blocking and waits for a response.
+            If you need to execute a command with no output, or you want to send a command and get the answer later,
+            use c() function.
+            If you want to read the output with a non-blocking function use r() function
         Usage:
             pi = a('print pi')
             Executes 'print pi' command with gnuplot and returns command output into 'pi' variable
         """
+        response = []
         self.c(command)
-        sleep(0.01)  # wait 10ms for gnuplot
-        return self.r(vtype, timeout)
+        while len(response) == 0:
+            response = self.r(vtype, timeout)
+        return response
 
     def m_str(self, data, delimiter=' '):
         """
