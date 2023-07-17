@@ -104,16 +104,23 @@ class gp(object):
             queue.put(line)
         out.close()
 
-    def c(self, command):
+
+    def c(self, commands, block=True):
         """
         Description:
-            send a command to gnuplot.
-            this does not check for responses
+            send a string with one or more commands to gnuplot.
+            this does not check for responses, but checkes for errors and throws an exception if one or more are found
         Usage:
             w('plot sin(x)')  # only send a command to gnuplot
         """
-        self.p.stdin.write(command + '\n')  # \n 'send return in python 2.7'
-        self.p.stdin.flush()  # send the command in python 3.4+
+        timestamp = time_ns()
+        self.p.stdin.write(commands + "\n" + 'set print "-"\n' + f'print "COMMAND_SEQUENCE_ENDED-{timestamp}"\n') # \n 'send return in python 2.7'
+        self.p.stdin.flush() # send the command in python 3.4+
+
+        if block:
+            while len(self.q_out.queue) == 0 or not self.q_out.queue[-1] == f"COMMAND_SEQUENCE_ENDED-{timestamp}\n":
+                pass
+
 
     def r(self, vtype=str, stderr: bool = True):
         """
