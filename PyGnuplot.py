@@ -79,21 +79,25 @@ class gp(object):
                             args=(self.p.stdout, self.q_out))
         self.t_out.daemon = True  # thread dies with the program
         self.t_out.start()
-        self.r()  # clear return buffer
-        self.active_term = terminal or str(*self.a('print GPVAL_TERM'))
-        self.c(f"set terminal {self.active_term}")
+        self.flush_all()
+        self.c("unset print")
+        if terminal:
+            self.c(f"set terminal {terminal}")
+        self.flush_all()
+
 
     def set_terminal(self, terminal: str):
         """
         Description:
-            used to change active terminal
+            used to change active terminal and flush all queues
         Inputs:
             terminal : Name of the desired terminal
         Usage:
             set_terminal("svg")  # sets active terminal to "svg"
         """
-        self.active_term = terminal
-        self.c(f"set terminal {self.active_term}")
+        self.c(f"set terminal {terminal}")
+        self.flush_all()
+
 
     def enqueue_std(self, out, queue):
         """
@@ -296,6 +300,12 @@ class gp(object):
     def flush_queue(self, stderr=True):
         self.r(stderr=stderr)
 
+    def current_terminal(self) -> str:
+        self.flush_all()
+        self.c('print GPVAL_TERM')
+        return str(*self.r())
+
+
     def ps(self, filename='tmp.ps', width=14, height=9, fontsize=12):
         """
         Description:
@@ -303,13 +313,15 @@ class gp(object):
         Usage:
             ps(filename='myfigure.ps')  # overwrites/creates myfigure.ps
         """
+        active_term = self.current_terminal()
         self.c('set term postscript size '
                + str(width) + 'cm, '
                + str(height) + 'cm color solid '
                + str(fontsize) + " font 'Calibri';")
         self.c('set out "' + filename + '";replot;')
-        self.c('set term ' + self.active_term + ';replot')
+        self.c('set term ' + active_term + ';replot')
         return self.r()
+
 
     def pdf(self, filename='tmp.pdf', width=8.8, height=6, fontscale=0.5):
         """
@@ -318,12 +330,13 @@ class gp(object):
         Usage:
             pdf(filename='myfigure.pdf')  # overwrites/creates myfigure.pdf
         """
+        active_term = self.current_terminal()
         self.c('set term pdfcairo fontscale '
                + str(fontscale) + 'size '
                + str(width) + 'cm, '
                + str(height) + "cm;")
         self.c('set out "' + filename + '";replot;')
-        self.c('set term ' + self.active_term + '; replot')
+        self.c('set term ' + active_term + '; replot')
         return self.r()  # clear buffer
 
     def quit(self):
