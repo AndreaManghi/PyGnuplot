@@ -339,8 +339,9 @@ class gp(object):
         self.c('set term ' + active_term + '; replot')
         return self.r()  # clear buffer
 
+
     def quit(self):
-        aa = self.a('exit')  # close gnuplot
+        aa = self.a('exit', block=False)  # close gnuplot
         self.p.kill()  # kill pipe
         return aa
 
