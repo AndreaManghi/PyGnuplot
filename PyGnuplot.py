@@ -28,9 +28,11 @@ Example:
 '''
 
 import sys
+import re
+from math import pow
 from subprocess import PIPE, Popen
 from threading import Thread
-from time import sleep
+from time import time_ns
 
 try:
     from queue import Queue, Empty  # Python 3.x
@@ -38,6 +40,10 @@ except ImportError:
     from Queue import Queue, Empty  # Python 2.x
 
 ON_POSIX = 'posix' in sys.builtin_module_names
+
+class GnuplotException(Exception):
+    "Raised when gnuplot throws an error"
+    pass
 
 
 class gp(object):
@@ -59,6 +65,7 @@ class gp(object):
         # Also initialize with gnuplot_address = r"C:\Program Files\gnuplot\bin\gnuplot.exe"
         self.gnuplot_address = gnuplot_address
         # open pipe with gnuplot
+        self.outIndex = 0
         self.p = Popen([gnuplot_address], stdin=PIPE, stderr=PIPE, stdout=PIPE,
                        bufsize=1, close_fds=ON_POSIX,
                        shell=False, universal_newlines=True)
@@ -108,7 +115,7 @@ class gp(object):
         self.p.stdin.write(command + '\n')  # \n 'send return in python 2.7'
         self.p.stdin.flush()  # send the command in python 3.4+
 
-    def r(self, vtype=str, timeout=0.05):
+    def r(self, vtype=str, stderr: bool = True):
         """
         Description:
             read line without blocking, also clears the buffer.
@@ -118,13 +125,21 @@ class gp(object):
         lines = []
         while True:
             try:
-                line = self.q_out.get(timeout=timeout)  # or .get_nowait()
-                lines.append(vtype(line.strip()))
+                if stderr:
+                    line = self.q_err.get_nowait()
+                else:
+                    line = self.q_out.get_nowait()
+                if vtype is not type(line):
+                    lines.append(vtype(line.strip()))
+                else:
+                    lines.append(line)
             except Empty:
                 break
+        self.outIndex = 0
         return lines
 
-    def a(self, command='', vtype=str, timeout=0.05):
+
+    def a(self, command, vtype=str, stderr=True):
         """
         Description:
             ask gnuplot (write and get answer), this function is blocking and waits for a response.
@@ -135,11 +150,26 @@ class gp(object):
             pi = a('print pi')
             Executes 'print pi' command with gnuplot and returns command output into 'pi' variable
         """
+        startIndex = self.outIndex
         response = []
         self.c(command)
-        while len(response) == 0:
-            response = self.r(vtype, timeout)
-        return response
+
+        self.outIndex = len(self.q_err.queue)
+        for i in range(startIndex, self.outIndex):
+            if re.match(r"[ \t]*\^[ \t]*\n", self.q_err.queue[i]):
+                errorLines = self.r(stderr=True)
+                cleanErrorLines = [line for line in errorLines[i - 1:] if line != "" and line != "\n"] # -1 to include the command that has generated the error in the exception output
+                error = "".join(cleanErrorLines)
+                self.flush_all()
+                print("Error occured")
+                raise GnuplotException("\n" + error)
+
+        response = self.r(vtype=vtype, stderr=stderr)
+        if len(response) == 0:
+            raise GnuplotException("Empty Response")
+
+        cleanResponse = [line for line in response if not re.match(r"^COMMAND_SEQUENCE_ENDED\-[0-9]+", line)]
+        return cleanResponse
 
     def m_str(self, data, delimiter=' '):
         """
@@ -189,8 +219,7 @@ class gp(object):
         self.c(func)  # 'y(x)=a+b*x'
         self.c('set fit limit '+str(limit))
         self.c('fit ' + func_name + ' "' + filename + '" via ' + via)
-        sleep(wait) # wait until fitting is done
-        report = self.a() # if no report is returned maybe increase the wait time here
+        report = self.r() # if no report is returned maybe increase the wait time here
         return self.get_variables(via), report
 
     def fit2d(self, data, func='y(x)=a + b*x', via='a,b', limit=1e-9):
@@ -225,7 +254,8 @@ class gp(object):
         vals = via.split(',')
         ret = []
         for i in vals:
-            r = self.a('print ' + i)
+            self.c('set print "-"')
+            r = self.a('print ' + i, stderr=False)
             try:
                 r = float(r[0])  # hard coded conversion if possible
             except ValueError:
@@ -248,7 +278,16 @@ class gp(object):
 
     def empty_plot(self):
         self.c('clear')
-        self.r()  # clear the output buffer
+        self.flush_all()  # clear the output queues
+
+
+    def flush_all(self):
+        self.flush_queue()
+        self.flush_queue(stderr=False)
+
+
+    def flush_queue(self, stderr=True):
+        self.r(stderr=stderr)
 
     def ps(self, filename='tmp.ps', width=14, height=9, fontsize=12):
         """
