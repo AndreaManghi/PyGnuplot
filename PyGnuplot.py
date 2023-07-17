@@ -81,9 +81,9 @@ class gp(object):
         self.t_out.daemon = True  # thread dies with the program
         self.t_out.start()
         self.flush_all()
-        self.c("unset print")
+        self.send_command("unset print")
         if terminal:
-            self.c(f"set terminal {terminal}")
+            self.send_command(f"set terminal {terminal}")
         self.flush_all()
 
 
@@ -96,7 +96,7 @@ class gp(object):
         Usage:
             set_terminal("svg")  # sets active terminal to "svg"
         """
-        self.c(f"set terminal {terminal}")
+        self.send_command(f"set terminal {terminal}")
         self.flush_all()
 
 
@@ -110,7 +110,7 @@ class gp(object):
         out.close()
 
 
-    def c(self, commands, block=True):
+    def send_command(self, commands, block=True):
         """
         Description:
             send a string with one or more commands to gnuplot.
@@ -127,7 +127,7 @@ class gp(object):
                 pass
 
 
-    def r(self, vtype=str, stderr: bool = True):
+    def read(self, vtype=str, stderr: bool = True):
         """
         Description:
             read line without blocking, also clears the buffer.
@@ -151,7 +151,7 @@ class gp(object):
         return lines
 
 
-    def a(self, command, vtype=str, stderr=True):
+    def ask(self, command, vtype=str, stderr=True):
         """
         Description:
             ask gnuplot (write and get answer), this function is blocking and waits for a response.
@@ -164,19 +164,19 @@ class gp(object):
         """
         startIndex = self.outIndex
         response = []
-        self.c(command)
+        self.send_command(command)
 
         self.outIndex = len(self.q_err.queue)
         for i in range(startIndex, self.outIndex):
             if re.match(r"[ \t]*\^[ \t]*\n", self.q_err.queue[i]):
-                errorLines = self.r(stderr=True)
+                errorLines = self.read(stderr=True)
                 cleanErrorLines = [line for line in errorLines[i - 1:] if line != "" and line != "\n"] # -1 to include the command that has generated the error in the exception output
                 error = "".join(cleanErrorLines)
                 self.flush_all()
                 print("Error occured")
                 raise GnuplotException("\n" + error)
 
-        response = self.r(vtype=vtype, stderr=stderr)
+        response = self.read(vtype=vtype, stderr=stderr)
         if len(response) == 0:
             raise GnuplotException("Empty Response")
 
@@ -208,9 +208,9 @@ class gp(object):
             com = "plot "-" u 1:2 w lp"
         """
         str_data = self.m_str(data)
-        self.c(com)
-        self.c(str_data+'e')  # add end character to plot string
-        return self.r()
+        self.send_command(com)
+        self.send_command(str_data+'e')  # add end character to plot string
+        return self.read()
 
 
     def fit(self, data, func='y(x)=a + b*x', via='a,b', limit=1e-9, filename='tmp.dat', wait=1):
@@ -230,10 +230,10 @@ class gp(object):
         """
         self.save(data, filename=filename)
         func_name = func.split('=')[0]
-        self.c(func)  # 'y(x)=a+b*x'
-        self.c('set fit limit '+str(limit))
-        self.c('fit ' + func_name + ' "' + filename + '" via ' + via)
-        report = self.r() # if no report is returned maybe increase the wait time here
+        self.send_command(func)  # 'y(x)=a+b*x'
+        self.send_command('set fit limit '+str(limit))
+        self.send_command('fit ' + func_name + ' "' + filename + '" via ' + via)
+        report = self.read() # if no report is returned maybe increase the wait time here
         return self.get_variables(via), report
 
 
@@ -251,10 +251,10 @@ class gp(object):
         '''
         str_data = self.m_str(data)
         func_name = func.split('=')[0]
-        self.c(func)  # 'y(x)=a+b*x'
-        self.c('set fit limit ' + str(limit))
-        self.c('fit ' + func_name + ' "-" via ' + via)
-        report = self.a(str_data+'e')
+        self.send_command(func)  # 'y(x)=a+b*x'
+        self.send_command('set fit limit ' + str(limit))
+        self.send_command('fit ' + func_name + ' "-" via ' + via)
+        report = self.ask(str_data+'e')
         return self.get_variables(via), report
 
 
@@ -270,8 +270,8 @@ class gp(object):
         vals = via.split(',')
         ret = []
         for i in vals:
-            self.c('set print "-"')
-            r = self.a('print ' + i, stderr=False)
+            self.send_command('set print "-"')
+            r = self.ask('print ' + i, stderr=False)
             try:
                 r = float(r[0])  # hard coded conversion if possible
             except ValueError:
@@ -286,7 +286,7 @@ class gp(object):
             saves numbers arrays and text into filename (default = 'tmp.dat)
             (assumes equal sizes and 2D data sets)
         Usage:
-            s(data, filename='tmp.dat')  # overwrites/creates tmp.dat
+            save(data, filename='tmp.dat')  # overwrites/creates tmp.dat
         """
         with open(filename, 'w') as f:
             filestr = self.m_str(data, delimiter=delimiter)
@@ -294,7 +294,7 @@ class gp(object):
             f.close()  # write the rest and close
 
     def empty_plot(self):
-        self.c('clear')
+        self.send_command('clear')
         self.flush_all()  # clear the output queues
 
 
@@ -304,12 +304,12 @@ class gp(object):
 
 
     def flush_queue(self, stderr=True):
-        self.r(stderr=stderr)
+        self.read(stderr=stderr)
 
     def current_terminal(self) -> str:
         self.flush_all()
-        self.c('print GPVAL_TERM')
-        return str(*self.r())
+        self.send_command('print GPVAL_TERM')
+        return str(*self.read())
 
 
     def ps(self, filename='tmp.ps', width=14, height=9, fontsize=12):
@@ -320,13 +320,13 @@ class gp(object):
             ps(filename='myfigure.ps')  # overwrites/creates myfigure.ps
         """
         active_term = self.current_terminal()
-        self.c('set term postscript size '
+        self.send_command('set term postscript size '
                + str(width) + 'cm, '
                + str(height) + 'cm color solid '
                + str(fontsize) + " font 'Calibri';")
-        self.c('set out "' + filename + '";replot;')
-        self.c('set term ' + active_term + ';replot')
-        return self.r()
+        self.send_command('set out "' + filename + '";replot;')
+        self.send_command('set term ' + active_term + ';replot')
+        return self.read()
 
 
     def pdf(self, filename='tmp.pdf', width=8.8, height=6, fontscale=0.5):
@@ -337,17 +337,17 @@ class gp(object):
             pdf(filename='myfigure.pdf')  # overwrites/creates myfigure.pdf
         """
         active_term = self.current_terminal()
-        self.c('set term pdfcairo fontscale '
+        self.send_command('set term pdfcairo fontscale '
                + str(fontscale) + 'size '
                + str(width) + 'cm, '
                + str(height) + "cm;")
-        self.c('set out "' + filename + '";replot;')
-        self.c('set term ' + active_term + '; replot')
-        return self.r()  # clear buffer
+        self.send_command('set out "' + filename + '";replot;')
+        self.send_command('set term ' + active_term + '; replot')
+        return self.read()  # clear buffer
 
 
     def quit(self):
-        aa = self.a('exit', block=False)  # close gnuplot
+        aa = self.ask('exit', block=False)  # close gnuplot
         self.p.kill()  # kill pipe
         return aa
 
