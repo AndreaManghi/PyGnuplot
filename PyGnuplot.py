@@ -61,6 +61,7 @@ class gp(object):
         executes "print pi" command with gnuplot and captures the output in the "pi" variable
     """
 
+
     def __init__(self, gnuplot_address='gnuplot', terminal=None):
         # Also initialize with gnuplot_address = r"C:\Program Files\gnuplot\bin\gnuplot.exe"
         self.gnuplot_address = gnuplot_address
@@ -197,6 +198,7 @@ class gp(object):
             ascii_st += '\n'
         return ascii_st
 
+
     def plot(self, data, com='plot "-" u 1:2 w lp'):
         """
         Description:
@@ -209,6 +211,7 @@ class gp(object):
         self.c(com)
         self.c(str_data+'e')  # add end character to plot string
         return self.r()
+
 
     def fit(self, data, func='y(x)=a + b*x', via='a,b', limit=1e-9, filename='tmp.dat', wait=1):
         """
@@ -233,6 +236,7 @@ class gp(object):
         report = self.r() # if no report is returned maybe increase the wait time here
         return self.get_variables(via), report
 
+
     def fit2d(self, data, func='y(x)=a + b*x', via='a,b', limit=1e-9):
         '''
         Description:
@@ -248,10 +252,11 @@ class gp(object):
         str_data = self.m_str(data)
         func_name = func.split('=')[0]
         self.c(func)  # 'y(x)=a+b*x'
-        self.c('set fit limit '+str(limit))
+        self.c('set fit limit ' + str(limit))
         self.c('fit ' + func_name + ' "-" via ' + via)
         report = self.a(str_data+'e')
         return self.get_variables(via), report
+
 
     def get_variables(self, via):
         """
@@ -273,6 +278,7 @@ class gp(object):
                 pass
             ret.append(r)
         return ret
+
 
     def save(self, data, filename='tmp.dat', delimiter=' '):
         """
