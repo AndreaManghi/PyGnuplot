@@ -168,7 +168,7 @@ class gp(object):
 
         self.outIndex = len(self.q_err.queue)
         for i in range(startIndex, self.outIndex):
-            if re.match(r"[ \t]*\^[ \t]*\n", self.q_err.queue[i]):
+            if re.match(r"[ \t]*\^\n", self.q_err.queue[i]):
                 errorLines = self.read(stderr=True)
                 cleanErrorLines = [line for line in errorLines[i - 1:] if line != "" and line != "\n"] # -1 to include the command that has generated the error in the exception output
                 error = "".join(cleanErrorLines)
@@ -181,6 +181,8 @@ class gp(object):
             raise GnuplotException("Empty Response")
 
         cleanResponse = [line for line in response if not re.match(r"^COMMAND_SEQUENCE_ENDED\-[0-9]+", line)]
+        if not re.match(r"\S+", "".join(cleanResponse)):
+            raise GnuplotException("Empty Response")
         return cleanResponse
 
     def m_str(self, data, delimiter=' '):
