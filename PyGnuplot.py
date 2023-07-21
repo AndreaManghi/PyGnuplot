@@ -297,6 +297,8 @@ class gp(object):
 
     def empty_plot(self):
         self.send_command('clear')
+        self.send_command('reset')
+        self.send_command('reset errors')
         self.flush_all()  # clear the output queues
 
 
