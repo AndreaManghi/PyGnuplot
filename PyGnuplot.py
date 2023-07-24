@@ -21,8 +21,8 @@ Example:
     Z = Y**2.0
     fig1 = gp()
     fig1.save([X,Y,Z])  # saves data into tmp.dat
-    fig1.c('plot "tmp.dat" u 1:2 w lp)  # send 'plot instructions to gnuplot'
-    fig1.c('replot "tmp.dat" u 1:3' w lp)
+    fig1.send_command('plot "tmp.dat" u 1:2 w lp)  # send 'plot instructions to gnuplot'
+    fig1.send_command('replot "tmp.dat" u 1:3' w lp)
     fig1.pdf('myfigure.pdf')  # outputs pdf file
 
 '''
@@ -185,7 +185,7 @@ class gp(object):
             raise GnuplotException("Empty Response")
         return cleanResponse
 
-    def m_str(self, data, delimiter=' '):
+    def data_to_str(self, data, delimiter=' '):
         """
         Description:
             turn data into string format
@@ -310,6 +310,7 @@ class gp(object):
     def flush_queue(self, stderr=True):
         self.read(stderr=stderr)
 
+
     def current_terminal(self) -> str:
         self.flush_all()
         self.send_command('print GPVAL_TERM')
@@ -354,6 +355,7 @@ class gp(object):
         aa = self.ask('exit', block=False)  # close gnuplot
         self.p.kill()  # kill pipe
         return aa
+
 
 
 if __name__ == '__main__':
