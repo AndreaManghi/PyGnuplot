@@ -119,7 +119,9 @@ class gp(object):
             w('plot sin(x)')  # only send a command to gnuplot
         """
         timestamp = time_ns()
-        self.p.stdin.write(commands + "\n" + 'set print "-"\n' + f'print "COMMAND_SEQUENCE_ENDED-{timestamp}"\n') # \n 'send return in python 2.7'
+        for line in commands.splitlines(keepends=True):
+            self.p.stdin.write(line)
+        self.p.stdin.write("\n" + 'set print "-"\n' + f'print "COMMAND_SEQUENCE_ENDED-{timestamp}"\n') # \n 'send return in python 2.7'
         self.p.stdin.flush() # send the command in python 3.4+
 
         if block:
