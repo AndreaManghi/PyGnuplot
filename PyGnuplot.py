@@ -164,19 +164,11 @@ class gp(object):
             pi = a('print pi')
             Executes 'print pi' command with gnuplot and returns command output into 'pi' variable
         """
-        startIndex = self.outIndex
         response = []
         self.send_command(command)
 
-        self.outIndex = len(self.q_err.queue)
-        for i in range(startIndex, self.outIndex):
-            if re.match(r"[ \t]*\^\n", self.q_err.queue[i]):
-                errorLines = self.read(stderr=True)
-                cleanErrorLines = [line for line in errorLines[i - 1:] if line != "" and line != "\n"] # -1 to include the command that has generated the error in the exception output
-                error = "".join(cleanErrorLines)
-                self.flush_all()
-                print("Error occured")
-                raise GnuplotException("\n" + error)
+        if err:= self.__checkErrors() is not None:
+                raise GnuplotException("\n" + err)
 
         response = self.read(vtype=vtype, stderr=stderr)
         if len(response) == 0:
@@ -186,6 +178,21 @@ class gp(object):
         if not re.match(r"\S+", "".join(cleanResponse)):
             raise GnuplotException("Empty Response")
         return cleanResponse
+
+
+    def __checkErrors(self):
+        error = None
+        startIndex = self.outIndex
+        for i in range(startIndex, self.outIndex):
+            if re.match(r"[ \t]*\^\n", self.q_err.queue[i]):
+                errorLines = self.read(stderr=True)
+                cleanErrorLines = [line for line in errorLines[i - 1:] if line != "" and line != "\n"] # -1 to include the command that has generated the error in the exception output
+                error = "".join(cleanErrorLines)
+                self.flush_all()
+                print("Error occured")
+        self.outIndex = len(self.q_err.queue)
+        return (error)
+
 
     def data_to_str(self, data, delimiter=' '):
         """
