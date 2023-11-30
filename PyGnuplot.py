@@ -29,8 +29,7 @@ Example:
 
 import sys
 import re
-from math import pow
-from subprocess import PIPE, Popen
+import subprocess as sp
 from threading import Thread
 from time import time_ns
 
@@ -67,17 +66,35 @@ class gp(object):
         self.gnuplot_address = gnuplot_address
         # open pipe with gnuplot
         self.outIndex = 0
-        self.p = Popen([gnuplot_address], stdin=PIPE, stderr=PIPE, stdout=PIPE,
-                       bufsize=1, close_fds=ON_POSIX,
-                       shell=False, universal_newlines=True)
+
+        startupinfo = None
+        if sys.platform == 'win32':
+            startupinfo = sp.STARTUPINFO()
+            startupinfo.dwFlags |= sp.STARTF_USESHOWWINDOW
+
+        self.p = sp.Popen(
+            [gnuplot_address],
+            stdin=sp.PIPE,
+            stderr=sp.PIPE,
+            stdout=sp.PIPE,
+            bufsize=1,
+            close_fds=ON_POSIX,
+            shell=False,
+            universal_newlines=True,
+            startupinfo=startupinfo,
+        )
         self.q_err = Queue()
-        self.t_err = Thread(target=self.enqueue_std,
-                            args=(self.p.stderr, self.q_err))
+        self.t_err = Thread(
+            target=self.enqueue_std,
+            args=(self.p.stderr, self.q_err),
+        )
         self.t_err.daemon = True  # thread dies with the program
         self.t_err.start()
         self.q_out = Queue()
-        self.t_out = Thread(target=self.enqueue_std,
-                            args=(self.p.stdout, self.q_out))
+        self.t_out = Thread(
+            target=self.enqueue_std,
+            args=(self.p.stdout, self.q_out),
+        )
         self.t_out.daemon = True  # thread dies with the program
         self.t_out.start()
         self.flush_all()
@@ -158,8 +175,8 @@ class gp(object):
         Description:
             ask gnuplot (write and get answer), this function is blocking and waits for a response.
             If you need to execute a command with no output, or you want to send a command and get the answer later,
-            use c() function.
-            If you want to read the output with a non-blocking function use r() function
+            use send_command() function.
+            If you want to read the output with a non-blocking function use read() function
         Usage:
             pi = a('print pi')
             Executes 'print pi' command with gnuplot and returns command output into 'pi' variable
@@ -171,7 +188,7 @@ class gp(object):
                 raise GnuplotException("\n" + err)
 
         response = self.read(vtype=vtype, stderr=stderr)
-        if len(response) == 0:
+        if response is None or len(response) == 0:
             raise GnuplotException("Empty Response")
 
         cleanResponse = [line for line in response if not re.match(r"^COMMAND_SEQUENCE_ENDED\-[0-9]+", line)]
